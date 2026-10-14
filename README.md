@@ -162,7 +162,7 @@ For the first production deployment from PostgreSQL, follow [the migration guide
 docker compose -f docker-compose.prod.yml up --build -d
 ```
 
-The production database is `db.sqlite3` and static images are copied into `media/` in the project root on the Linux host. The frontend serves covers from `media/covers`. Compose reads `.env.production` directly for the PostgreSQL importer and frontend runtime configuration. The old PostgreSQL volume is retained as an external volume for the one-time import service. Before the first migration, verify that its name is `globalmarketsuite_globalmarketsuite_prod_postgres_data` as described in the migration guide.
+The production database is `db.sqlite3`. Static covers and the old uploaded images are copied into `media/` in the project root on the Linux host. The frontend serves both `/covers/...` and `/uploads/covers/...` from `media/covers`. Compose reads `.env.production` directly. The old PostgreSQL and uploads volumes remain external import sources; verify their names in the migration guide before the first run.
 
 ## Docker Rebuild
 

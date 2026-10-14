@@ -10,6 +10,7 @@ const sqlitePath = path.join(hostRoot, 'db.sqlite3');
 const tempPath = path.join(hostRoot, '.db.sqlite3.importing');
 const mediaPath = path.join(hostRoot, 'media');
 const staticAssets = path.join(hostRoot, 'frontend', 'public');
+const oldUploads = process.env.LEGACY_UPLOAD_DIR || '/legacy-uploads';
 const tables = {
   users: ['id', 'email', 'password_hash', 'role', 'created_at'],
   refresh_tokens: ['id', 'user_id', 'token_hash', 'csrf_token', 'expires_at', 'created_at'],
@@ -48,8 +49,9 @@ async function copyMedia(sourceDir, relative = '', strict = true) {
 }
 
 function checkCovers(database) {
-  for (const row of database.prepare("SELECT cover_image FROM generated_posts WHERE cover_image LIKE '/covers/%'").all()) {
-    const relative = decodeURIComponent(row.cover_image.slice(1));
+  for (const row of database.prepare("SELECT cover_image FROM generated_posts WHERE cover_image LIKE '/covers/%' OR cover_image LIKE '/uploads/%'").all()) {
+    const relative = decodeURIComponent(row.cover_image.startsWith('/uploads/')
+      ? row.cover_image.slice('/uploads/'.length) : row.cover_image.slice(1));
     if (relative.startsWith('/') || relative.split('/').includes('..') || !existsSync(path.join(mediaPath, relative))) {
       throw new Error(`Post references a missing local cover image: ${row.cover_image}`);
     }
@@ -70,15 +72,18 @@ async function main() {
         throw new Error('Existing db.sqlite3 is invalid or does not contain all imported tables');
       }
       await fs.mkdir(mediaPath, { recursive: true });
-      await copyMedia(staticAssets, '', false);
+      const staticCount = await copyMedia(staticAssets, '', false);
+      if (!existsSync(oldUploads)) throw new Error(`Old uploads volume is unavailable at ${oldUploads}`);
+      const uploadCount = await copyMedia(oldUploads, '', false);
       checkCovers(db);
+      console.log(`Existing db.sqlite3 preserved; static files checked: ${staticCount}; uploaded files checked: ${uploadCount}`);
     } finally {
       db.close();
     }
-    console.log('Existing db.sqlite3 found; PostgreSQL import skipped and media checked.');
     return;
   }
   if (existsSync(tempPath)) throw new Error(`${tempPath} exists from an interrupted import; inspect and remove it before retrying`);
+  if (!existsSync(oldUploads)) throw new Error(`Old uploads volume is unavailable at ${oldUploads}`);
   for (const key of ['POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD']) {
     if (!process.env[key]) throw new Error(`${key} is required for the one-time PostgreSQL import`);
   }
@@ -126,13 +131,14 @@ async function main() {
     if (integrity.integrity_check !== 'ok' || fkProblems.length) throw new Error('SQLite integrity or foreign key check failed');
 
     await fs.mkdir(mediaPath, { recursive: true });
-    const mediaCount = await copyMedia(staticAssets);
+    const staticCount = await copyMedia(staticAssets);
+    const uploadCount = await copyMedia(oldUploads);
     checkCovers(database);
     database.close();
     database = undefined;
     await client.query('COMMIT');
     await fs.rename(tempPath, sqlitePath);
-    console.log(`Import complete: ${JSON.stringify(counts)}; media files: ${mediaCount}`);
+    console.log(`Import complete: ${JSON.stringify(counts)}; static files: ${staticCount}; uploaded files: ${uploadCount}`);
   } catch (error) {
     try { await client.query('ROLLBACK'); } catch { /* preserve the original error */ }
     throw error;

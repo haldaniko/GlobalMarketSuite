@@ -32,11 +32,13 @@ services:
     restart: "no"
     volumes:
       - ./:/host-data
+      - globalmarketsuite_prod_uploads:/legacy-uploads:ro
     env_file:
       - ./.env.production
     environment:
       NODE_ENV: migration
       HOST_DATA_DIR: /host-data
+      LEGACY_UPLOAD_DIR: /legacy-uploads
       PGHOST: postgres
     depends_on:
       postgres:
@@ -58,6 +60,7 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_PATH: /host-data/db.sqlite3
+      UPLOAD_DIR: /host-data/media
       REDIS_URL: redis://redis:6379
     depends_on:
       import-legacy-data:
@@ -80,6 +83,7 @@ services:
       - "8095:3000"
     volumes:
       - ./media/covers:/app/dist/covers:ro
+      - ./media:/app/dist/uploads:ro
     env_file:
       - ./.env.production
     environment:
@@ -92,3 +96,6 @@ volumes:
   globalmarketsuite_prod_postgres_data:
     external: true
     name: globalmarketsuite_globalmarketsuite_prod_postgres_data
+  globalmarketsuite_prod_uploads:
+    external: true
+    name: globalmarketsuite_globalmarketsuite_prod_uploads
