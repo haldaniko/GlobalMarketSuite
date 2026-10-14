@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import { randomUUID } from 'node:crypto';
 import { query } from './db';
 import type { User } from '../types';
 
@@ -25,11 +26,11 @@ export async function findUserById(id: string): Promise<User | null> {
 export async function createSuperadmin(email: string, password: string): Promise<User> {
   const passwordHash = await bcrypt.hash(password, 12);
   const result = await query(
-    `INSERT INTO users (email, password_hash, role)
-     VALUES ($1, $2, 'admin')
+    `INSERT INTO users (id, email, password_hash, role)
+     VALUES ($1, $2, $3, 'admin')
      ON CONFLICT (email) DO UPDATE SET password_hash = excluded.password_hash
      RETURNING *`,
-    [email, passwordHash],
+    [randomUUID(), email, passwordHash],
   );
   return mapUser(result.rows[0]);
 }

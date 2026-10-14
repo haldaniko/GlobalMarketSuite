@@ -1,6 +1,12 @@
 import type { AdminSettings, Post } from './domain';
 
-export const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+declare global {
+  interface Window {
+    __GMS_CONFIG__?: { apiUrl?: string };
+  }
+}
+
+export const apiUrl = window.__GMS_CONFIG__?.apiUrl || import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 async function parseData<T>(response: Response): Promise<T> {
   const body = await response.json().catch(() => ({}));

@@ -1,11 +1,11 @@
 # GlobalMarketSuite
 
-Full-stack blog and AI publishing platform for `globalmarketsuite.com`: Vite React frontend, Express TypeScript backend, PostgreSQL, Redis, JWT auth, refresh-token sessions, CSRF protection, admin publishing, OpenRouter generation, and Docker dev/prod environments.
+Full-stack blog and AI publishing platform for `globalmarketsuite.com`: Vite React frontend, Express TypeScript backend, SQLite, Redis, JWT auth, refresh-token sessions, CSRF protection, admin publishing, OpenRouter generation, and Docker dev/prod environments.
 
 ## Stack
 
 - Frontend: Vite, React, TypeScript, SCSS, client-side routing, admin panel inside the app.
-- Backend: Node.js, Express, TypeScript, PostgreSQL, Redis-ready runtime, bcrypt password hashing, JWT access tokens, secure refresh-token cookies, CSRF checks, audit log, rate limiting, HTML sanitization, structured errors.
+- Backend: Node.js, Express, TypeScript, SQLite, Redis-ready runtime, bcrypt password hashing, JWT access tokens, secure refresh-token cookies, CSRF checks, audit log, rate limiting, HTML sanitization, structured errors.
 - AI: OpenRouter, default model `meta-llama/llama-3.1-8b-instruct`.
 - Ports: frontend `3000`, backend `4000`.
 
@@ -24,7 +24,7 @@ Full-stack blog and AI publishing platform for `globalmarketsuite.com`: Vite Rea
 npm run dev:docker
 ```
 
-This runs `npm run setup:dev-env` first, then starts Postgres, Redis, backend, frontend, and `admin-seed`.
+This runs `npm run setup:dev-env` first, then starts Redis, backend, frontend, and `admin-seed`. The development database is `db.sqlite3` in the project root.
 
 Equivalent direct Docker command:
 
@@ -54,7 +54,7 @@ Override before running Docker:
 LOCAL_SUPERADMIN_EMAIL=admin@example.com LOCAL_SUPERADMIN_PASSWORD='replace-me' npm run dev:docker
 ```
 
-The password is stored as a bcrypt hash in PostgreSQL, never as plain text.
+The password is stored as a bcrypt hash in SQLite, never as plain text.
 
 ## Environment Setup
 
@@ -93,7 +93,7 @@ Do not run real generation unless you intend to call OpenRouter.
 
 The default GlobalMarketSuite prompt is in `backend/src/data/masterPrompt.ts`.
 
-At runtime, settings are read from PostgreSQL table `admin_settings`. The admin panel has a master prompt textarea. OpenRouter generation uses `settings.masterPrompt` from the database, not a hardcoded prompt.
+At runtime, settings are read from the SQLite `admin_settings` table. The admin panel has a master prompt textarea. OpenRouter generation uses `settings.masterPrompt` from the database, not a hardcoded prompt.
 
 To change it:
 
@@ -123,9 +123,9 @@ Generated articles receive a local cover path stored in `generated_posts.cover_i
 ## Auth And Security
 
 - Access token: short-lived JWT returned to the frontend.
-- Refresh token: random token stored as an HTTP-only cookie and hashed in PostgreSQL.
+- Refresh token: random token stored as an HTTP-only cookie and hashed in SQLite.
 - CSRF token: generated with refresh token and required for refresh, logout, admin mutations, and generation.
-- Logout deletes the refresh token from PostgreSQL and clears the cookie.
+- Logout deletes the refresh token from SQLite and clears the cookie.
 - Production cookies use `secure: true`; cookies are `httpOnly` and `sameSite: strict`.
 - Admin routes require bearer access token.
 - CORS is controlled by `CORS_ORIGIN`.
@@ -156,11 +156,13 @@ Important production values:
 - `REFRESH_TOKEN_SECRET`
 - `OPENROUTER_API_KEY`
 
-Run production compose:
+For the first production deployment from PostgreSQL, follow [the migration guide](MIGRATION_TO_SQLITE.ru.md). It backs up the old data, then uses the same Compose command as future deployments:
 
 ```bash
-docker compose --env-file .env.production -f docker-compose.prod.yml up --build -d
+docker compose -f docker-compose.prod.yml up --build -d
 ```
+
+The production database is `db.sqlite3` and static images are copied into `media/` in the project root on the Linux host. The frontend serves covers from `media/covers`. Compose reads `.env.production` directly for the PostgreSQL importer and frontend runtime configuration. The old PostgreSQL volume is retained as an external volume for the one-time import service. Before the first migration, verify that its name is `globalmarketsuite_globalmarketsuite_prod_postgres_data` as described in the migration guide.
 
 ## Docker Rebuild
 
@@ -200,26 +202,17 @@ If login fails, check:
 
 ```bash
 docker compose logs admin-seed
-docker compose exec postgres psql -U globalmarketsuite -d globalmarketsuite -c "select email, role from users;"
+docker compose exec backend node -e "const { DatabaseSync } = require('node:sqlite'); const db = new DatabaseSync('/host-data/db.sqlite3', { readOnly: true }); console.log(db.prepare('SELECT email, role FROM users').all()); db.close()"
 ```
 
 If AI generation fails with `OPENROUTER_API_KEY is not configured`, add the key to root `.env`, run `npm run setup:dev-env`, and restart backend.
 
-If Docker volumes contain old data, remove the project volume only when you are comfortable deleting local database data:
-
-```bash
-docker compose down
-docker volume rm globalmarketsuite_globalmarketsuite_postgres_data
-```
-
 ## Backups
 
-```bash
-docker compose exec postgres pg_dump -U globalmarketsuite -d globalmarketsuite > globalmarketsuite-backup.sql
-```
+Back up `db.sqlite3` and `media/` together. To copy the SQLite file directly, stop the backend first so the backup is consistent. The old PostgreSQL volume should remain until the migration has been verified.
 
-Restore:
+The following legacy PostgreSQL commands apply only before the first import:
 
 ```bash
-docker compose exec -T postgres psql -U globalmarketsuite -d globalmarketsuite < globalmarketsuite-backup.sql
+docker compose --env-file .env.production -f docker-compose.prod.yml exec -T postgres sh -c 'pg_dump -h /var/run/postgresql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > globalmarketsuite-postgres.dump
 ```

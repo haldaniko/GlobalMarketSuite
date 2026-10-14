@@ -1,4 +1,5 @@
 import slugify from 'slugify';
+import { randomUUID } from 'node:crypto';
 import { query } from './db';
 import { sanitizeArticleHtml } from './htmlSanitizer';
 import type { Post, PostInput } from '../types';
@@ -55,6 +56,7 @@ export async function searchPosts(q: string): Promise<Post[]> {
 export async function upsertPost(input: PostInput, source: Post['source'] = 'admin', currentSlug?: string): Promise<Post> {
   const slug = input.slug ? makeSlug(input.slug) : makeSlug(input.title);
   const values = [
+    randomUUID(),
     slug,
     input.title.trim(),
     input.excerpt.trim(),
@@ -68,8 +70,8 @@ export async function upsertPost(input: PostInput, source: Post['source'] = 'adm
     source,
   ];
   const result = await query(
-    `INSERT INTO generated_posts (slug, title, excerpt, content_html, cover_image, status, author, tags, seo_title, seo_description, source)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+    `INSERT INTO generated_posts (id, slug, title, excerpt, content_html, cover_image, status, author, tags, seo_title, seo_description, source)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
      ON CONFLICT (slug) DO UPDATE SET
        title = excluded.title,
        excerpt = excluded.excerpt,

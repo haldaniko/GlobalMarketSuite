@@ -96,7 +96,7 @@ ensureEnv({
   defaults: {
     PORT: "4000",
     CORS_ORIGIN: "http://localhost:3000",
-    DATABASE_URL: "postgres://globalmarketsuite:globalmarketsuite@localhost:5432/globalmarketsuite",
+    DATABASE_PATH: "/host-data/db.sqlite3",
     OPENROUTER_MODEL: "meta-llama/llama-3.1-8b-instruct",
     OPENROUTER_SITE_URL: "http://localhost:3000",
     OPENROUTER_TIMEOUT_MS: "90000",

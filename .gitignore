@@ -22,6 +22,10 @@ frontend/.env.production
 # Runtime data
 backend/data/
 backend/media/
+/db.sqlite3
+/db.sqlite3-*
+/.db.sqlite3.importing*
+/media/
 postgres_data/
 redis_data/
 

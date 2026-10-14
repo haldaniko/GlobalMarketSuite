@@ -1,15 +1,15 @@
+name: globalmarketsuite
+
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    env_file:
+      - ./.env.production
     volumes:
       - globalmarketsuite_prod_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -23,6 +23,25 @@ services:
       timeout: 5s
       retries: 20
 
+  import-legacy-data:
+    image: globalmarketsuite-backend-prod
+    build:
+      context: ./backend
+      target: prod
+    command: node scripts/import-postgres.mjs
+    restart: "no"
+    volumes:
+      - ./:/host-data
+    env_file:
+      - ./.env.production
+    environment:
+      NODE_ENV: migration
+      HOST_DATA_DIR: /host-data
+      PGHOST: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   backend:
     image: globalmarketsuite-backend-prod
     build:
@@ -31,34 +50,45 @@ services:
     restart: unless-stopped
     ports:
       - "4100:4000"
+    volumes:
+      - ./:/host-data
     env_file:
       - path: backend/.env.production
         required: false
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DATABASE_PATH: /host-data/db.sqlite3
       REDIS_URL: redis://redis:6379
     depends_on:
-      postgres:
-        condition: service_healthy
+      import-legacy-data:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
 
   frontend:
     image: globalmarketsuite-frontend-prod
     build:
       context: ./frontend
       target: prod
-      args:
-        VITE_API_URL: ${VITE_API_URL}
     restart: unless-stopped
     ports:
       - "8095:3000"
+    volumes:
+      - ./media/covers:/app/dist/covers:ro
+    env_file:
+      - ./.env.production
     environment:
       NODE_ENV: production
-      VITE_API_URL: ${VITE_API_URL}
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   globalmarketsuite_prod_postgres_data:
+    external: true
+    name: globalmarketsuite_globalmarketsuite_prod_postgres_data
