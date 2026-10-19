@@ -123,7 +123,7 @@ function toArticle(post: Post, index = 0): Article {
   return {
     ...post,
     coverImage: post.coverImage || coverFallback,
-    category: post.tags[0] || (post.source === 'ai' ? 'Market Intelligence' : 'Strategy'),
+    category: post.source === 'bot' ? 'Market Intelligence' : post.tags[0] || (post.source === 'ai' ? 'Market Intelligence' : 'Strategy'),
     readingTime: readingTime(post.contentHtml),
     views: 3200 + index * 370,
   };

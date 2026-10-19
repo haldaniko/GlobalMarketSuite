@@ -5,7 +5,7 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     env_file:
-      - ./.env.production
+      - ./.env
     volumes:
       - globalmarketsuite_prod_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -34,7 +34,7 @@ services:
       - ./:/host-data
       - globalmarketsuite_prod_uploads:/legacy-uploads:ro
     env_file:
-      - ./.env.production
+      - ./.env
     environment:
       NODE_ENV: migration
       HOST_DATA_DIR: /host-data
@@ -55,8 +55,7 @@ services:
     volumes:
       - ./:/host-data
     env_file:
-      - path: backend/.env.production
-        required: false
+      - ./.env
     environment:
       NODE_ENV: production
       DATABASE_PATH: /host-data/db.sqlite3
@@ -85,7 +84,7 @@ services:
       - ./media/covers:/app/dist/covers:ro
       - ./media:/app/dist/uploads:ro
     env_file:
-      - ./.env.production
+      - ./.env
     environment:
       NODE_ENV: production
     depends_on:

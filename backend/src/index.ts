@@ -1,3 +1,4 @@
+import './loadEnv';
 import express from 'express';
 import path from 'node:path';
 import cors from 'cors';
@@ -12,6 +13,7 @@ import { authRouter } from './routes/auth';
 import { adminRouter } from './routes/admin';
 import { aiRouter } from './routes/ai';
 import { healthIndexRouter } from './routes/healthIndex';
+import { botRouter } from './routes/bot';
 import { startGenerationScheduler } from './services/generationScheduler';
 
 const app = express();
@@ -34,6 +36,7 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'globalmarketsuite-backend', time: new Date().toISOString() });
 });
 app.use('/api/posts', postsRouter);
+app.use('/api/bot/v1', botRouter);
 app.use('/api/subscribe', subscribersRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/admin', adminRouter);

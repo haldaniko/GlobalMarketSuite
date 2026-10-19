@@ -18,6 +18,7 @@ function mapPost(row: any): Post {
     seoTitle: row.seo_title,
     seoDescription: row.seo_description,
     source: row.source,
+    categorySlug: row.category_slug,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

@@ -72,6 +72,11 @@ export function createSchema() {
       source TEXT NOT NULL DEFAULT 'admin',
       created_at TEXT NOT NULL DEFAULT (${dateNow}), updated_at TEXT NOT NULL DEFAULT (${dateNow})
     );
+    CREATE TABLE IF NOT EXISTS bot_articles (
+      external_id TEXT PRIMARY KEY,
+      post_id TEXT NOT NULL UNIQUE REFERENCES generated_posts(id) ON DELETE CASCADE,
+      payload_hash TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS admin_settings (
       key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT (${dateNow})
     );
@@ -84,6 +89,10 @@ export function createSchema() {
       created_at TEXT NOT NULL DEFAULT (${dateNow})
     );
   `);
+  const columns = database.prepare('PRAGMA table_info(generated_posts)').all() as { name: string }[];
+  if (!columns.some((column) => column.name === 'category_slug')) {
+    database.exec("ALTER TABLE generated_posts ADD COLUMN category_slug TEXT NOT NULL DEFAULT 'marketing-intelligence'");
+  }
 }
 
 export async function ensureSchema() {

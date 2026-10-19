@@ -12,12 +12,9 @@ frontend/dist/
 dist/
 
 # Env files
-.env
-.env.production
-backend/.env
-backend/.env.production
-frontend/.env
-frontend/.env.production
+**/.env
+**/.env.*
+!/.env.sample
 
 # Runtime data
 backend/data/

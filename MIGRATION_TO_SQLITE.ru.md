@@ -34,7 +34,7 @@ docker run --rm -v "${PROJECT}_globalmarketsuite_prod_uploads:/source:ro" -v "$B
 test -s "$BACKUP_DIR/postgres.dump" && test -d "$BACKUP_DIR/covers" && test -s "$BACKUP_DIR/uploads.tar"
 ```
 
-После этого разверните обновлённый код. Сохраните существующие `.env.production` и `backend/.env.production`. Проверьте, что в корне проекта нет случайного `db.sqlite3`: при наличии этого файла импорт PostgreSQL пропускается. Если изображения внутри старого frontend-контейнера были изменены вручную и отличаются от файлов `frontend/public/covers/`, сначала восстановите нужные изображения из резервной копии в исходный каталог или в `media/covers/`.
+После этого разверните обновлённый код. До удаления старых `.env.production` и `backend/.env.production` выполните `npm run setup:env`: команда перенесёт отсутствующие значения в единый корневой `.env`. Проверьте в нём `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `SITE_URL`, `CORS_ORIGIN` и `VITE_API_URL`, а затем удалите старые env-файлы. Проверьте, что в корне проекта нет случайного `db.sqlite3`: при наличии этого файла импорт PostgreSQL пропускается. Если изображения внутри старого frontend-контейнера были изменены вручную и отличаются от файлов `frontend/public/covers/`, сначала восстановите нужные изображения из резервной копии в исходный каталог или в `media/covers/`.
 
 Запустите обычный production Compose из корня проекта:
 
@@ -56,7 +56,7 @@ curl -f http://127.0.0.1:4100/api/posts
 curl -I http://127.0.0.1:8095/covers/market-map.svg
 ```
 
-Проверьте статьи, вход администратора и изображения на сайте. При ошибке импорта backend не должен стартовать. Посмотрите `logs import-legacy-data`; не удаляйте старый PostgreSQL volume. Если ошибка сообщает `password authentication failed`, пароль пользователя внутри существующего PostgreSQL volume не совпадает с `POSTGRES_PASSWORD` в `.env.production`. Не меняйте пароль наугад: сначала проверьте старую базу через локальный `psql` и резервную копию. Если остался `.db.sqlite3.importing`, осмотрите его и удалите **только временный файл** перед повтором.
+Проверьте статьи, вход администратора и изображения на сайте. При ошибке импорта backend не должен стартовать. Посмотрите `logs import-legacy-data`; не удаляйте старый PostgreSQL volume. Если ошибка сообщает `password authentication failed`, пароль пользователя внутри существующего PostgreSQL volume не совпадает с `POSTGRES_PASSWORD` в корневом `.env`. Не меняйте пароль наугад: сначала проверьте старую базу через локальный `psql` и резервную копию. Если остался `.db.sqlite3.importing`, осмотрите его и удалите **только временный файл** перед повтором.
 
 Если перед сайтом стоит Nginx, его `api.globalmarketsuite.com` должен вести на `127.0.0.1:4100`, а `globalmarketsuite.com` — на `127.0.0.1:8095`. Обложки `/covers/` и `/uploads/covers/` отдаёт frontend с хостовой папки `media/covers/`.
 

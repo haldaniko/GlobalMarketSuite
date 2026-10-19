@@ -13,8 +13,7 @@ Full-stack blog and AI publishing platform for `globalmarketsuite.com`: Vite Rea
 
 - `frontend/` public blog, article pages, about page, and admin UI.
 - `backend/` API, database schema initialization, auth, admin routes, OpenRouter service, scheduler.
-- `scripts/setup-dev-env.mjs` creates `.env`, `backend/.env`, and `frontend/.env`.
-- `scripts/setup-prod-env.mjs` creates production env templates with generated secrets.
+- `scripts/setup-env.mjs` creates or completes the single root `.env` from `.env.sample`.
 - `docker-compose.yml` runs dev containers.
 - `docker-compose.prod.yml` is the production-oriented compose file.
 
@@ -24,12 +23,12 @@ Full-stack blog and AI publishing platform for `globalmarketsuite.com`: Vite Rea
 npm run dev:docker
 ```
 
-This runs `npm run setup:dev-env` first, then starts Redis, backend, frontend, and `admin-seed`. The development database is `db.sqlite3` in the project root.
+This runs `npm run setup:env` first, then starts Redis, backend, frontend, and `admin-seed`. The development database is `db.sqlite3` in the project root.
 
 Equivalent direct Docker command:
 
 ```bash
-npm run setup:dev-env
+npm run setup:env
 docker compose up --build -d
 ```
 
@@ -43,10 +42,7 @@ Admin: `http://localhost:3000/admin`
 
 The `admin-seed` service creates or updates the local superadmin.
 
-Default local login:
-
-- Email: `admin@globalmarketsuite.local`
-- Password: `MySecretPassword123!`
+The initial email and password are `LOCAL_SUPERADMIN_EMAIL` and `LOCAL_SUPERADMIN_PASSWORD` in root `.env`. The setup script generates a password when creating a new file.
 
 Override before running Docker:
 
@@ -58,23 +54,9 @@ The password is stored as a bcrypt hash in SQLite, never as plain text.
 
 ## Environment Setup
 
-Real env files are ignored by git:
+The only active environment file is root `.env` (ignored by git). Root `.env.sample` lists all settings. Run `npm run setup:env` to create missing settings and generate `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, and `BOT_INTEGRATION_TOKEN`. Existing values are preserved. Development Compose overrides URLs and storage paths for localhost; production Compose uses the values in `.env`.
 
-- `.env`
-- `backend/.env`
-- `frontend/.env`
-- `.env.production`
-- `backend/.env.production`
-
-Example files are committed:
-
-- `.env.example`
-- `.env.production.example`
-- `backend/.env.example`
-- `backend/.env.production.example`
-- `frontend/.env.example`
-
-`scripts/setup-dev-env.mjs` generates `JWT_SECRET` and `REFRESH_TOKEN_SECRET` automatically. Put `OPENROUTER_API_KEY` once in root `.env`; the setup script propagates it into `backend/.env`.
+For production, set `VITE_API_URL=https://api.globalmarketsuite.com`, `SITE_URL=https://globalmarketsuite.com`, and `CORS_ORIGIN=https://globalmarketsuite.com`. Keep `POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD` matching the existing PostgreSQL volume until the SQLite import completes.
 
 ## OpenRouter
 
@@ -120,6 +102,12 @@ To change it:
 
 Generated articles receive a local cover path stored in `generated_posts.cover_image`. Existing articles keep their saved cover image.
 
+## Telegram Bot Publishing
+
+The bot can publish through `https://api.globalmarketsuite.com/api/bot/v1/` using `BOT_INTEGRATION_TOKEN` as a Bearer token. Add a bot site entry with ID `globalmarketsuite`, that API base, and `token_env` set to `GLOBALMARKETSUITE_INTEGRATION_TOKEN`; its token value must equal this project's `BOT_INTEGRATION_TOKEN`.
+
+The integration supports `GET options/`, `POST articles/`, `GET articles/:external_id/`, `PUT articles/:external_id/image/`, and `POST articles/:external_id/publish/`. Draft creation and publication are separate and safe to retry with the same external ID. Uploaded JPEG, PNG, or WebP covers are stored in `media/covers/` and served from the public site. Bot articles use the `Market Intelligence` category and appear in the regular article feed after publication.
+
 ## Auth And Security
 
 - Access token: short-lived JWT returned to the frontend.
@@ -135,16 +123,13 @@ Generated articles receive a local cover path stored in `generated_posts.cover_i
 
 ## Production Setup
 
-Create production env files:
+Create or complete the root `.env`:
 
 ```bash
-npm run setup:prod-env
+npm run setup:env
 ```
 
-Review and edit:
-
-- `.env.production`
-- `backend/.env.production`
+Review and edit `.env`.
 
 Important production values:
 
@@ -154,6 +139,7 @@ Important production values:
 - `SITE_URL`
 - `JWT_SECRET`
 - `REFRESH_TOKEN_SECRET`
+- `BOT_INTEGRATION_TOKEN`
 - `OPENROUTER_API_KEY`
 
 For the first production deployment from PostgreSQL, follow [the migration guide](MIGRATION_TO_SQLITE.ru.md). It backs up the old data, then uses the same Compose command as future deployments:
@@ -162,7 +148,7 @@ For the first production deployment from PostgreSQL, follow [the migration guide
 docker compose -f docker-compose.prod.yml up --build -d
 ```
 
-The production database is `db.sqlite3`. Static covers and the old uploaded images are copied into `media/` in the project root on the Linux host. The frontend serves both `/covers/...` and `/uploads/covers/...` from `media/covers`. Compose reads `.env.production` directly. The old PostgreSQL and uploads volumes remain external import sources; verify their names in the migration guide before the first run.
+The production database is `db.sqlite3`. Static covers and uploaded images live in `media/` in the project root on the Linux host. The frontend serves both `/covers/...` and `/uploads/covers/...` from `media/covers`. Compose reads root `.env`. The old PostgreSQL and uploads volumes remain external import sources; verify their names in the migration guide before the first run.
 
 ## Docker Rebuild
 
@@ -205,14 +191,10 @@ docker compose logs admin-seed
 docker compose exec backend node -e "const { DatabaseSync } = require('node:sqlite'); const db = new DatabaseSync('/host-data/db.sqlite3', { readOnly: true }); console.log(db.prepare('SELECT email, role FROM users').all()); db.close()"
 ```
 
-If AI generation fails with `OPENROUTER_API_KEY is not configured`, add the key to root `.env`, run `npm run setup:dev-env`, and restart backend.
+If AI generation fails with `OPENROUTER_API_KEY is not configured`, add the key to root `.env` and restart backend.
 
 ## Backups
 
 Back up `db.sqlite3` and `media/` together. To copy the SQLite file directly, stop the backend first so the backup is consistent. The old PostgreSQL volume should remain until the migration has been verified.
 
-The following legacy PostgreSQL commands apply only before the first import:
-
-```bash
-docker compose --env-file .env.production -f docker-compose.prod.yml exec -T postgres sh -c 'pg_dump -h /var/run/postgresql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > globalmarketsuite-postgres.dump
-```
+For the first PostgreSQL import, follow the backup steps in [the migration guide](MIGRATION_TO_SQLITE.ru.md) before updating the deployed code.

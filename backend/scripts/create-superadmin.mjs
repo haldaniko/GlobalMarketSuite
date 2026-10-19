@@ -1,8 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import bcrypt from 'bcryptjs';
+
+const rootEnv = path.resolve(import.meta.dirname, '../../.env');
+if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
 
 const email = process.env.LOCAL_SUPERADMIN_EMAIL || process.env.SUPERADMIN_EMAIL || 'admin@globalmarketsuite.local';
 const password = process.env.LOCAL_SUPERADMIN_PASSWORD || process.env.SUPERADMIN_PASSWORD || 'MySecretPassword123!';

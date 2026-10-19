@@ -2,10 +2,9 @@
   "name": "globalmarketsuite",
   "private": true,
   "scripts": {
-    "setup:dev-env": "node scripts/setup-dev-env.mjs",
-    "dev:docker": "npm run setup:dev-env && docker compose up --build -d",
+    "setup:env": "node scripts/setup-env.mjs",
+    "dev:docker": "npm run setup:env && docker compose up --build -d",
     "docker:rebuild": "DOCKER_BUILDKIT=0 docker build -t globalmarketsuite-backend-dev --target dev ./backend && DOCKER_BUILDKIT=0 docker build -t globalmarketsuite-frontend-dev --target dev ./frontend && docker compose up -d --no-build",
-    "generate-secrets": "npm --prefix backend run generate-secrets",
-    "setup:prod-env": "node scripts/setup-prod-env.mjs"
+    "generate-secrets": "npm --prefix backend run generate-secrets"
   }
 }

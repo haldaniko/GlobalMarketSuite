@@ -30,7 +30,8 @@ export interface Post extends Required<Omit<PostInput, 'slug' | 'status' | 'auth
   coverImage: string;
   seoTitle: string | null;
   seoDescription: string | null;
-  source: 'admin' | 'ai' | 'legacy';
+  source: 'admin' | 'ai' | 'legacy' | 'bot';
+  categorySlug: string;
   createdAt: string;
   updatedAt: string;
 }

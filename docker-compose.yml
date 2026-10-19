@@ -1,11 +1,4 @@
 services:
-  env-setup:
-    image: node:20-alpine
-    working_dir: /workspace
-    volumes:
-      - .:/workspace
-    command: ["node", "scripts/setup-dev-env.mjs"]
-
   redis:
     image: redis:7-alpine
     healthcheck:
@@ -24,17 +17,14 @@ services:
     volumes:
       - ./:/host-data
     env_file:
-      - path: .env
-        required: false
-      - path: backend/.env
-        required: false
+      - ./.env
     environment:
       DATABASE_PATH: /host-data/db.sqlite3
+      UPLOAD_DIR: /host-data/media
       REDIS_URL: redis://redis:6379
       CORS_ORIGIN: http://localhost:3000
+      SITE_URL: http://localhost:3000
     depends_on:
-      env-setup:
-        condition: service_completed_successfully
       redis:
         condition: service_healthy
     healthcheck:
@@ -51,13 +41,11 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - path: frontend/.env
-        required: false
+      - ./.env
     environment:
       VITE_API_URL: http://localhost:4000
+      BACKEND_PROXY_URL: http://backend:4000
     depends_on:
-      env-setup:
-        condition: service_completed_successfully
       backend:
         condition: service_healthy
 
@@ -66,18 +54,13 @@ services:
     volumes:
       - ./:/host-data
     env_file:
-      - path: .env
-        required: false
-      - path: backend/.env
-        required: false
+      - ./.env
     environment:
       DATABASE_PATH: /host-data/db.sqlite3
       LOCAL_SUPERADMIN_EMAIL: ${LOCAL_SUPERADMIN_EMAIL:-admin@globalmarketsuite.local}
       LOCAL_SUPERADMIN_PASSWORD: ${LOCAL_SUPERADMIN_PASSWORD:-MySecretPassword123!}
     command: npm run create-superadmin
     depends_on:
-      env-setup:
-        condition: service_completed_successfully
       backend:
         condition: service_healthy
     restart: "no"
