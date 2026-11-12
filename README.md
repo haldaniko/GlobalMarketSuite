@@ -7,7 +7,7 @@ Full-stack blog and AI publishing platform for `globalmarketsuite.com`: Vite Rea
 - Frontend: Vite, React, TypeScript, SCSS, client-side routing, admin panel inside the app.
 - Backend: Node.js, Express, TypeScript, SQLite, Redis-ready runtime, bcrypt password hashing, JWT access tokens, secure refresh-token cookies, CSRF checks, audit log, rate limiting, HTML sanitization, structured errors.
 - AI: OpenRouter, default model `meta-llama/llama-3.1-8b-instruct`.
-- Ports: frontend `3000`, backend `4000`.
+- Ports: frontend `9005` (container port `3000`), backend `4000`.
 
 ## Project Structure
 
@@ -32,11 +32,48 @@ npm run setup:env
 docker compose up --build -d
 ```
 
-Frontend: `http://localhost:3000`
+Frontend: `http://localhost:9005`
 
 Backend health: `http://localhost:4000/api/health`
 
-Admin: `http://localhost:3000/admin`
+Admin: `http://localhost:9005/admin`
+
+## Digital Book And Stripe Checkout
+
+The homepage book section reads its title and price from the backend. Checkout uses Stripe Hosted Checkout in one-time `payment` mode. The browser never sends a price. A pending SQLite order is created before the Checkout Session, and the session ID is saved on that order. Signed Stripe webhooks are the primary payment confirmation; the success page can also verify a paid Checkout Session while it waits for webhook delivery.
+
+1. Put the private PDF at `private/book.pdf`. PDF files in `private/` are ignored by Git. Docker mounts this directory at `/app/private` read-only; the frontend never serves it as static content.
+2. Set these root `.env` values:
+
+```bash
+STRIPE_SECRET_KEY=sk_test_or_live_value
+STRIPE_WEBHOOK_SECRET=whsec_value
+BOOK_DOWNLOAD_SECRET=a-long-random-secret
+BOOK_TITLE=Your book title
+BOOK_AUTHOR=Your author name
+BOOK_PRICE_CENTS=1900
+BOOK_CURRENCY=eur
+BOOK_FILE_PATH=/app/private/book.pdf
+BOOK_DOWNLOAD_MAX_AGE=86400
+SITE_URL=http://localhost:9005
+CORS_ALLOWED_ORIGINS=http://localhost:9005,http://127.0.0.1:9005
+```
+
+`BOOK_PRICE_CENTS` is the only price used to create Stripe line items and the same value returned by the public product endpoint. For production, change `SITE_URL`, `VITE_API_URL`, and `CORS_ALLOWED_ORIGINS` to the public HTTPS origins.
+
+In Stripe Workbench, register this webhook endpoint:
+
+```text
+https://api.your-domain.example/api/book/webhook
+```
+
+Subscribe it to `checkout.session.completed` and `checkout.session.async_payment_succeeded`, then copy its signing secret to `STRIPE_WEBHOOK_SECRET`. For local forwarding with Stripe CLI:
+
+```bash
+stripe listen --forward-to localhost:4000/api/book/webhook
+```
+
+The success route is `/book/success`. Download links are HMAC-signed, expire after `BOOK_DOWNLOAD_MAX_AGE` seconds (24 hours by default), do not disclose the file path, and are accepted only while the associated order is paid.
 
 ## Superadmin
 
@@ -56,7 +93,7 @@ The password is stored as a bcrypt hash in SQLite, never as plain text.
 
 The only active environment file is root `.env` (ignored by git). Root `.env.sample` lists all settings. Run `npm run setup:env` to create missing settings and generate `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, and `BOT_INTEGRATION_TOKEN`. Existing values are preserved. Development Compose overrides URLs and storage paths for localhost; production Compose uses the values in `.env`.
 
-For production, set `VITE_API_URL=https://api.globalmarketsuite.com`, `SITE_URL=https://globalmarketsuite.com`, and `CORS_ORIGIN=https://globalmarketsuite.com`. Keep `POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD` matching the existing PostgreSQL volume until the SQLite import completes.
+For production, set `VITE_API_URL=https://api.globalmarketsuite.com`, `SITE_URL=https://globalmarketsuite.com`, and `CORS_ALLOWED_ORIGINS=https://globalmarketsuite.com`. Keep `POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD` matching the existing PostgreSQL volume until the SQLite import completes.
 
 ## OpenRouter
 
@@ -177,12 +214,12 @@ docker compose logs admin-seed
 ```bash
 docker compose config --quiet
 curl http://localhost:4000/api/health
-curl http://localhost:3000
+curl http://localhost:9005
 ```
 
 ## Troubleshooting
 
-If port `3000` or `4000` is busy, stop the process using it or change the compose port mapping and matching env URLs.
+If port `9005` or `4000` is busy, stop the process using it or change the compose port mapping and matching env URLs.
 
 If login fails, check:
 

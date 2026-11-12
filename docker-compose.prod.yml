@@ -32,6 +32,7 @@ services:
     restart: "no"
     volumes:
       - ./:/host-data
+      - ./private:/app/private:ro
       - globalmarketsuite_prod_uploads:/legacy-uploads:ro
     env_file:
       - ./.env

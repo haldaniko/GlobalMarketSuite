@@ -13,6 +13,7 @@
 body {
   margin: 0;
   min-width: 320px;
+  overflow-x: hidden;
   background:
     linear-gradient(90deg, rgba(14, 59, 67, 0.06) 1px, transparent 1px),
     linear-gradient(180deg, rgba(14, 59, 67, 0.05) 1px, transparent 1px),
@@ -229,7 +230,7 @@ button {
 
 .signal-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -667,6 +668,279 @@ button {
   font-weight: 800;
 }
 
+.footer-link {
+  border: 0;
+  padding: 8px;
+  background: transparent;
+  color: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.book-section {
+  scroll-margin-top: 72px;
+  overflow: hidden;
+  border-top: 1px solid rgba(14, 59, 67, 0.16);
+  border-bottom: 1px solid rgba(14, 59, 67, 0.16);
+  background: #e8dfcf;
+}
+
+.book-grid {
+  min-height: 720px;
+  display: grid;
+  grid-template-columns: minmax(320px, 0.82fr) minmax(0, 1.18fr);
+  align-items: center;
+  gap: clamp(48px, 8vw, 110px);
+  padding-top: 80px;
+  padding-bottom: 80px;
+}
+
+.book-stage {
+  position: relative;
+  min-height: 530px;
+  display: grid;
+  place-items: center;
+  perspective: 1200px;
+}
+
+.book-stage::before {
+  content: '';
+  position: absolute;
+  width: 82%;
+  height: 44px;
+  bottom: 22px;
+  border-radius: 50%;
+  background: rgba(23, 35, 33, 0.25);
+  filter: blur(18px);
+}
+
+.book-cover {
+  position: relative;
+  width: min(330px, 76vw);
+  aspect-ratio: 0.69;
+  display: flex;
+  flex-direction: column;
+  padding: 42px 34px;
+  border: 1px solid rgba(246, 200, 95, 0.55);
+  border-radius: 3px 9px 9px 3px;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.28), transparent 8%, transparent 94%, rgba(255, 255, 255, 0.11)),
+    linear-gradient(155deg, #0e3b43, #172321 76%);
+  box-shadow: -12px 16px 0 #b7aa96, -22px 34px 48px rgba(23, 35, 33, 0.35);
+  color: #f7f4ee;
+  transform: rotateY(-10deg) rotateZ(-1.5deg);
+}
+
+.book-cover::after {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border: 1px solid rgba(246, 200, 95, 0.32);
+  pointer-events: none;
+}
+
+.book-kicker,
+.book-author {
+  position: relative;
+  z-index: 1;
+  color: #f6c85f;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.book-cover strong {
+  position: relative;
+  z-index: 1;
+  margin: auto 0 20px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(34px, 5vw, 50px);
+  line-height: 0.98;
+}
+
+.book-cover-rule {
+  position: relative;
+  z-index: 1;
+  width: 58px;
+  height: 3px;
+  margin-bottom: 20px;
+  background: #c14953;
+}
+
+.book-copy h2 {
+  max-width: 720px;
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(42px, 6vw, 72px);
+  line-height: 0.98;
+}
+
+.book-byline {
+  margin: 12px 0 24px;
+  color: #5b6b67;
+  font-weight: 800;
+}
+
+.book-lede {
+  max-width: 680px;
+  color: #425c5a;
+  font-size: 19px;
+  line-height: 1.65;
+}
+
+.book-benefits {
+  display: grid;
+  gap: 12px;
+  margin: 28px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.book-benefits li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #273f3c;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.book-benefits svg {
+  flex: 0 0 18px;
+  margin-top: 2px;
+  color: #c14953;
+  stroke-width: 3;
+}
+
+.book-purchase {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-top: 30px;
+}
+
+.book-purchase > div {
+  display: grid;
+  gap: 2px;
+}
+
+.book-purchase span {
+  color: #5b6b67;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.book-purchase strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 34px;
+}
+
+.book-buy {
+  min-height: 54px;
+  padding: 0 24px;
+}
+
+.book-buy:disabled {
+  opacity: 0.58;
+  cursor: wait;
+}
+
+.book-assurance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+  margin-top: 18px;
+  color: #5b6b67;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.book-assurance span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.purchase-result {
+  min-height: calc(100vh - 145px);
+  display: grid;
+  place-items: center;
+  padding: 64px 0;
+}
+
+.purchase-card {
+  width: min(680px, 100%);
+  padding: clamp(30px, 6vw, 64px);
+  border: 1px solid rgba(14, 59, 67, 0.18);
+  border-radius: 8px;
+  background: #fffaf1;
+  box-shadow: 0 22px 60px rgba(14, 59, 67, 0.13);
+  text-align: center;
+}
+
+.purchase-card h1 {
+  margin: 14px 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(36px, 6vw, 58px);
+  line-height: 1;
+}
+
+.purchase-card > p:not(.overline) {
+  color: #425c5a;
+  line-height: 1.65;
+}
+
+.purchase-card .btn {
+  margin-top: 18px;
+  text-decoration: none;
+}
+
+.purchase-card small {
+  display: block;
+  margin-top: 18px;
+  color: #5b6b67;
+}
+
+.purchase-icon {
+  width: 58px;
+  height: 58px;
+  display: inline-grid;
+  place-items: center;
+  margin-bottom: 22px;
+  border-radius: 50%;
+  background: #0e3b43;
+  color: #f6c85f;
+}
+
+.payment-spinner {
+  width: 30px;
+  height: 30px;
+  display: block;
+  margin: 24px auto 0;
+  border: 3px solid rgba(14, 59, 67, 0.18);
+  border-top-color: #0e3b43;
+  border-radius: 50%;
+  animation: payment-spin 0.8s linear infinite;
+}
+
+@keyframes payment-spin { to { transform: rotate(360deg); } }
+
+.legal-page {
+  padding-bottom: 72px;
+}
+
+.legal-copy {
+  padding: 32px;
+  border: 1px solid rgba(14, 59, 67, 0.18);
+  border-radius: 8px;
+  background: #fffaf1;
+}
+
 @media (max-width: 900px) {
   .hero-grid,
   .section-head,
@@ -674,6 +948,15 @@ button {
   .about-grid,
   .admin-grid {
     grid-template-columns: 1fr;
+  }
+
+  .book-grid {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+
+  .book-stage {
+    min-height: 470px;
   }
 
   .hero-grid {
@@ -697,19 +980,20 @@ button {
   }
 
   .header-inner {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: center;
     padding: 12px 0;
   }
 
+  .brand > span:last-child { display: none; }
+
   .nav {
-    width: 100%;
+    width: auto;
     justify-content: space-between;
   }
 
   .nav button {
-    padding: 0 8px;
-    font-size: 14px;
+    padding: 0 6px;
+    font-size: 13px;
   }
 
   .hero h1 {
@@ -730,6 +1014,19 @@ button {
   .admin-post-list article {
     grid-template-columns: 1fr auto auto;
   }
+
+  .book-grid {
+    padding-top: 52px;
+    padding-bottom: 52px;
+  }
+
+  .book-stage { min-height: 410px; }
+  .book-cover { width: min(275px, 75vw); padding: 34px 28px; }
+  .book-purchase { align-items: stretch; }
+  .book-purchase > div { width: 100%; }
+  .book-buy { width: 100%; }
+  .book-assurance { display: grid; }
+  .site-footer .shell { align-items: flex-start; flex-direction: column; padding: 20px 0; }
 }
 
 .share-bar {

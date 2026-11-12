@@ -39,7 +39,7 @@ for (const line of sampleLines) {
 const nodeEnvIndex = lines.findIndex((entry) => entry.startsWith('NODE_ENV='));
 if (nodeEnvIndex >= 0) lines.splice(nodeEnvIndex, 1);
 
-for (const key of ['POSTGRES_PASSWORD', 'JWT_SECRET', 'REFRESH_TOKEN_SECRET', 'BOT_INTEGRATION_TOKEN', 'LOCAL_SUPERADMIN_PASSWORD']) {
+for (const key of ['POSTGRES_PASSWORD', 'JWT_SECRET', 'REFRESH_TOKEN_SECRET', 'BOT_INTEGRATION_TOKEN', 'LOCAL_SUPERADMIN_PASSWORD', 'BOOK_DOWNLOAD_SECRET']) {
   const current = value(key);
   if (!current || /^(replace-|change-me)/i.test(current)) {
     set(key, crypto.randomBytes(48).toString('base64url'));

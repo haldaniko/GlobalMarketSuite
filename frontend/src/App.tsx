@@ -1,17 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   BarChart3,
+  BookOpen,
+  Check,
   Clock,
+  Download,
   FilePlus,
   LogOut,
   RefreshCw,
   Save,
   Search,
   Settings,
+  ShieldCheck,
   Sparkles,
   Trash2,
 } from 'lucide-react';
-import { getPost, getPosts, request, subscribe } from './api';
+import { absoluteApiUrl, createBookCheckout, getBook, getBookOrderStatus, getPost, getPosts, request, subscribe } from './api';
+import type { BookProduct } from './api';
 import type { AdminSettings, Article, Post } from './domain';
 
 const coverFallback = '/covers/market-map.svg';
@@ -55,6 +60,11 @@ function navigate(path: string) {
   window.history.pushState({}, '', path);
   window.dispatchEvent(new Event('app:navigate'));
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function scrollToBook() {
+  if (window.location.pathname !== '/') navigate('/#book');
+  window.setTimeout(() => document.getElementById('book')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30);
 }
 
 function SocialIcon({ name }: { name: "x" | "threads" | "telegram" | "linkedin" }) {
@@ -152,10 +162,78 @@ function Header() {
         </button>
         <nav className="nav">
           <button onClick={() => navigate('/articles')}>Intelligence</button>
+          <button onClick={scrollToBook}>Book</button>
           <button onClick={() => navigate('/about')}>About</button>
         </nav>
       </div>
     </header>
+  );
+}
+
+function BookSection() {
+  const [book, setBook] = useState<BookProduct | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getBook().then(setBook).catch((err) => setError(err instanceof Error ? err.message : 'Could not load the book.'));
+  }, []);
+
+  async function buy() {
+    setBusy(true);
+    setError('');
+    try {
+      const { checkoutUrl } = await createBookCheckout();
+      window.location.assign(checkoutUrl);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Checkout is temporarily unavailable.');
+      setBusy(false);
+    }
+  }
+
+  const price = book
+    ? new Intl.NumberFormat('en', { style: 'currency', currency: book.currency.toUpperCase() }).format(book.amountCents / 100)
+    : '—';
+
+  return (
+    <section className="book-section" id="book">
+      <div className="shell book-grid">
+        <div className="book-stage" aria-hidden="true">
+          <div className="book-cover">
+            <span className="book-kicker">GLOBAL MARKET SUITE</span>
+            <strong>{book?.title || '[НАЗВАНИЕ КНИГИ]'}</strong>
+            <span className="book-cover-rule" />
+            <span className="book-author">{book?.author || '[ИМЯ АВТОРА]'}</span>
+          </div>
+        </div>
+        <div className="book-copy">
+          <p className="overline">The field guide</p>
+          <h2>{book?.title || '[НАЗВАНИЕ КНИГИ]'}</h2>
+          <p className="book-byline">by {book?.author || '[ИМЯ АВТОРА]'}</p>
+          <p className="book-lede">
+            A practical, contrarian playbook for seeing demand shifts earlier, turning behavioral insight into sharper strategy,
+            and building market ideas people actually remember.
+          </p>
+          <ul className="book-benefits">
+            <li><Check size={18} /> Spot overlooked behavioral signals before competitors do.</li>
+            <li><Check size={18} /> Translate consumer psychology into clear strategic moves.</li>
+            <li><Check size={18} /> Pressure-test positioning with reusable frameworks.</li>
+            <li><Check size={18} /> Make AI and market change useful instead of noisy.</li>
+          </ul>
+          <div className="book-purchase">
+            <div><span>Digital edition</span><strong>{price}</strong></div>
+            <button className="btn primary book-buy" onClick={buy} disabled={busy || !book}>
+              <BookOpen size={18} /> {busy ? 'Opening checkout…' : 'Buy the book'}
+            </button>
+          </div>
+          <div className="book-assurance">
+            <span><ShieldCheck size={17} /> Secure payment via Stripe</span>
+            <span><Download size={17} /> PDF · instant access after payment</span>
+          </div>
+          {error && <p className="error notice">{error}</p>}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -263,7 +341,84 @@ function HomePage({ articles }: { articles: Article[] }) {
           {rest.map((article) => <ArticleCard key={article.id} article={article} />)}
         </div>
       </main>
+      <BookSection />
     </>
+  );
+}
+
+function BookSuccessPage() {
+  const sessionId = new URLSearchParams(window.location.search).get('session_id');
+  const [state, setState] = useState<'checking' | 'pending' | 'paid' | 'error'>('checking');
+  const [downloadUrl, setDownloadUrl] = useState('');
+  const [message, setMessage] = useState('Confirming your payment with Stripe…');
+
+  useEffect(() => {
+    if (!sessionId) {
+      setState('error');
+      setMessage('This page is missing its Checkout Session ID.');
+      return;
+    }
+    let cancelled = false;
+    let attempts = 0;
+    async function check() {
+      try {
+        const result = await getBookOrderStatus(sessionId as string);
+        if (cancelled) return;
+        if (result.status === 'paid' && result.downloadUrl) {
+          setDownloadUrl(absoluteApiUrl(result.downloadUrl));
+          setState('paid');
+          setMessage('Payment confirmed. Your private download is ready.');
+          return;
+        }
+        attempts += 1;
+        setState('pending');
+        setMessage('Payment is still processing. This page will check again automatically.');
+        if (attempts < 15) window.setTimeout(check, 2000);
+      } catch (error) {
+        if (cancelled) return;
+        setState('error');
+        setMessage(error instanceof Error ? error.message : 'We could not verify this payment.');
+      }
+    }
+    void check();
+    return () => { cancelled = true; };
+  }, [sessionId]);
+
+  return (
+    <main className="shell purchase-result">
+      <div className={`purchase-card ${state}`}>
+        <span className="purchase-icon">{state === 'paid' ? <Check size={30} /> : <BookOpen size={30} />}</span>
+        <p className="overline">Digital book</p>
+        <h1>{state === 'paid' ? 'Thank you for your purchase.' : state === 'error' ? 'We could not verify the order.' : 'Checking your payment.'}</h1>
+        <p>{message}</p>
+        {state === 'paid' && <a className="btn primary" href={downloadUrl}><Download size={18} /> Download PDF</a>}
+        {state === 'pending' && <span className="payment-spinner" aria-label="Checking payment" />}
+        {state === 'error' && <button className="btn ghost" onClick={scrollToBook}>Return to the book</button>}
+        {state === 'paid' && <small>The signed link expires after 24 hours. You can revisit this page to generate a fresh link for this order.</small>}
+      </div>
+    </main>
+  );
+}
+
+function PrivacyPage() {
+  return (
+    <main className="shell legal-page">
+      <section className="page-intro">
+        <p className="overline">Legal</p>
+        <h1>Privacy Policy</h1>
+        <p>How GlobalMarketSuite handles publication, subscription, and digital-book purchase data.</p>
+      </section>
+      <article className="prose legal-copy">
+        <h2>Digital purchases</h2>
+        <p>For a book order, we store the buyer email supplied through Stripe Checkout, the Stripe Checkout Session ID, Payment Intent ID, purchase amount, currency, payment status, and order timestamps. We use this information to confirm payment, prevent duplicate fulfilment, support the purchase, and issue a temporary download link.</p>
+        <h2>Payment processing</h2>
+        <p>Payment-card details are collected and processed directly by Stripe. GlobalMarketSuite does not receive or store full card numbers, security codes, or other card credentials. Stripe processes this data under its own privacy terms.</p>
+        <h2>Retention and security</h2>
+        <p>Order records are retained for operational, accounting, fraud-prevention, and legal purposes. The book file is kept outside public web directories, and download links are signed, time-limited, and available only for paid orders.</p>
+        <h2>Contact</h2>
+        <p>For privacy questions or requests concerning your personal data, contact the GlobalMarketSuite publisher using the contact details shown on this site.</p>
+      </article>
+    </main>
   );
 }
 
@@ -631,6 +786,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (path === '/' && window.location.hash === '#book') {
+      window.setTimeout(() => document.getElementById('book')?.scrollIntoView({ block: 'start' }), 80);
+    }
+  }, [path]);
+
+  useEffect(() => {
     getPosts().then(setPosts).catch((err) => setError(err instanceof Error ? err.message : 'Could not load articles'));
   }, []);
 
@@ -654,11 +815,14 @@ export default function App() {
       {path === '/articles' && <ArticlesPage articles={articles} />}
       {path.startsWith('/articles/') && <ArticlePage article={selectedArticle} />}
       {path === '/about' && <AboutPage />}
+      {path === '/privacy' && <PrivacyPage />}
+      {path === '/book/success' && <BookSuccessPage />}
       {path === '/admin' && <AdminPage />}
       <footer className="site-footer">
         <div className="shell">
           <span>GlobalMarketSuite</span>
           <span>Marketing intelligence by Ioana The Best Inc.</span>
+          <button className="footer-link" onClick={() => navigate('/privacy')}>Privacy</button>
         </div>
       </footer>
     </>
